@@ -34,6 +34,8 @@ class PS2Port
     volatile uint8_t timerCountdown;
     volatile PS2_CMD_STATUS commandStatus = PS2_CMD_STATUS::IDLE;
 
+    volatile bool inhibited=false;
+
     void resetReceiver() {
       pinMode(datPin, INPUT);
       pinMode(clkPin, INPUT);
@@ -76,6 +78,14 @@ class PS2Port
         resetReceiver();
       }
       lastBitMillis = curMillis;
+
+      if (!inhibited && count()>=(size-1)){
+        inhibit();
+        return;
+      }
+      else if (inhibited){
+        return;
+      }
 
       byte curBit = digitalRead(datPin);
       switch (rxBitCount)
@@ -227,18 +237,23 @@ class PS2Port
 
     /// @brief Returns the next available byte from the PS/2 port
     uint8_t next() {
+      uint8_t value = 0;
       if (available()) {
-        uint8_t value = buffer[tail];
+        value = buffer[tail];
         tail = (tail + 1) & (size - 1);
         return value;
       }
-      else {
-        return 0;
+      if (inhibited && count() < (size-3)){
+        activate();
       }
+      return value;
     };
 
     void flush() {
       head = tail = 0;
+      if (inhibited){
+        activate();
+      }
       //lastBitMillis = 0;
     }
 
@@ -319,5 +334,16 @@ class PS2Port
     uint8_t count(){
       return (size+head-tail)&(size-1);
     }
+    
+    void inhibit(){
+      inhibited=true;
+      pinMode(clkPin, OUTPUT);
+      digitalWrite(clkPin, LOW);
+      resetReceiver();
+    }
 
+    void activate(){
+      inhibited=false;
+      pinMode(clkPin, INPUT);
+    }
 };
