@@ -241,7 +241,6 @@ class PS2Port
       if (available()) {
         value = buffer[tail];
         tail = (tail + 1) & (size - 1);
-        return value;
       }
       if (inhibited && count() < (size-3)){
         activate();
