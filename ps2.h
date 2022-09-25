@@ -63,6 +63,14 @@ class PS2Port
     /// @brief Process data on falling clock edge
     /// @attention This is interrupt code
     void onFallingClock() {
+      if (!inhibited && count()>=(size-1)){
+        inhibit();
+        return;
+      }
+      else if (inhibited){
+        return;
+      }
+
       if (ps2ddr == 0)
         receiveBit();
       else
@@ -78,14 +86,6 @@ class PS2Port
         resetReceiver();
       }
       lastBitMillis = curMillis;
-
-      if (!inhibited && count()>=(size-1)){
-        inhibit();
-        return;
-      }
-      else if (inhibited){
-        return;
-      }
 
       byte curBit = digitalRead(datPin);
       switch (rxBitCount)
@@ -338,7 +338,10 @@ class PS2Port
       inhibited=true;
       pinMode(clkPin, OUTPUT);
       digitalWrite(clkPin, LOW);
-      resetReceiver();
+      
+      curCode = 0;
+      parity = 0;
+      rxBitCount = 0;
     }
 
     void activate(){
